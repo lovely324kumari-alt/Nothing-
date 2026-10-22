@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>WIZARD CHESS 3D - The Royal Magic Chess Experience</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: #0a0a0a;
+            font-family: 'Cinzel', 'Georgia', serif;
+            color: #d4af37;
+            touch-action: none;
+        }
+
+        /* Prevent text selection during gameplay */
+        canvas {
+            display: block;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        #container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Loading Screen */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+
+        #loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-logo {
+            font-size: 3rem;
+            font-weight: bold;
+            text-shadow: 0 0 20px #d4af37, 0 0 40px #d4af37;
+            margin-bottom: 2rem;
+            letter-spacing: 0.3em;
+            color: #d4af37;
+        }
+
+        .loading-subtitle {
+            font-size: 1rem;
+            color: #888;
+            margin-bottom: 2rem;
+            letter-spacing: 0.2em;
+        }
+
+        .loading-bar {
+            width: 200px;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .loading-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #d4af37, #f4d03f, #d4af37);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .loading-percent {
+            margin-top: 1rem;
+            font-size: 1rem;
+            color: #d4af37;
+        }
+
+        /* Main Menu */
+        #main-menu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(10,10,10,0.95) 0%, rgba(26,26,46,0.95) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 900;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        #main-menu.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .menu-logo {
+            font-size: 4rem;
+            font-weight: bold;
+            text-shadow: 0 0 30px #d4af37, 0 0 60px #d4af37, 0 0 90px #d4af37;
+            margin-bottom: 1rem;
+            letter-spacing: 0.3em;
+            color: #d4af37;
+            text-align: center;
+        }
+
+        .menu-subtitle {
+            font-size: 1.2rem;
+            color: #888;
+            margin-bottom: 3rem;
+            letter-spacing: 0.2em;
+        }
+
+        .menu-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .menu-button {
+            width: 100%;
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            background: linear-gradient(145deg, #1a1a2e, #0a0a0a);
+            border: 2px solid #d4af37;
+            color: #d4af37;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            transition: all 0.3s ease;
+            border-radius: 5px;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
+        }
+
+        .menu-button:hover {
+            background: linear-gradient(145deg, #d4af37, #f4d03f);
+            color: #0a0a0a;
+            box-shadow: 0 6px 25px rgba(212, 175, 55, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .menu-button:active {
+            transform: translateY(0);
+        }
+
+        .menu-button.secondary {
+            border-color: #555;
+            color: #888;
+        }
+
+        .menu-button.secondary:hover {
+            border-color: #d4af37;
+            color: #d4af37;
+            background: rgba(212, 175, 55, 0.1);
+        }
+
+        .difficulty-selector {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .difficulty-btn {
+            flex: 1;
+            padding: 0.8rem 1.5rem;
+            font-size: 1rem;
+            background: rgba(26, 26, 46, 0.8);
+            border: 2px solid #555;
+            color: #888;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 5px;
+        }
+
+        .difficulty-btn:hover {
+            border-color: #d4af37;
+            color: #d4af37;
+        }
+
+        .difficulty-btn.selected {
+            background: linear-gradient(145deg, #d4af37, #f4d03f);
+            border-color: #f4d03f;
+            color: #0a0a0a;
+        }
+
+        /* In-Game HUD */
+        #game-hud {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 800;
+        }
+
+        .hud-top {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(10, 10, 10, 0.7);
+            border: 1px solid #333;
+            border-radius: 10px;
+        }
+
+        .turn-indicator {
+            padding: 0.5rem 1.5rem;
+            background: rgba(212, 175, 55, 0.2);
+            border: 1px solid #d4af37;
+            border-radius: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #d4af37;
+        }
+
+        .turn-indicator.white {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #fff;
+            color: #fff;
+        }
+
+        .turn-indicator.black {
+            background: rgba(0, 0, 0, 0.4);
+            border-color: #333;
+            color: #fff;
+        }
+
+        .hud-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .hud-button {
+            padding: 0.5rem 1rem;
+            background: rgba(26, 26, 46, 0.8);
+            border: 1px solid #555;
+            color: #ccc;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            pointer-events: auto;
+            transition: all 0.3s ease;
+        }
+
+        .hud-button:hover {
+            background: rgba(212, 175, 55, 0.2);
+            border-color: #d4af37;
+            color: #d4af37;
+        }
+
+        .move-history {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            background: rgba(10, 10, 10, 0.7);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 10px;
+            pointer-events: auto;
+        }
+
+        .move-history::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .move-history::-webkit-scrollbar-track {
+            background: #222;
+            border-radius: 3px;
+        }
+
+        .move-history::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 3px;
+        }
+
+        .move-history::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+
+        .move-entry {
+            font-size: 0.9rem;
+            color: #ccc;
+            padding: 0.25rem 0;
+            white-space: nowrap;
+        }
+
+        .move-entry.white {
+            color: #fff;
+        }
+
+        .move-entry.black {
+            color: #888;
+        }
+
+        .captured-pieces {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+            background: rgba(10, 10, 10, 0.7);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 10px;
+            max-width: 200px;
+            overflow-x: auto;
+        }
+
+        .captured-piece {
+            width: 30px;
+            height: 30px;
+            pointer-events: auto;
+        }
+
+        /* Camera Mode Indicator */
+        .camera-indicator {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 10, 10, 0.7);
+            border: 1px solid #333;
+            border-radius: 20px;
+            padding: 0.5rem 1.5rem;
+            font-size: 0.9rem;
+            color: #d4af37;
+        }
+
+        /* Promotion Modal */
+        #promotion-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 950;
+        }
+
+        #promotion-modal.active {
+            display: flex;
+        }
+
+        .promotion-content {
+            background: linear-gradient(145deg, #1a1a2e, #0a0a0a);
+            border: 2px solid #d4af37;
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .promotion-title {
+            font-size: 1.5rem;
+            color: #d4af37;
+            margin-bottom: 1.5rem;
+        }
+
+        .promotion-options {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .promotion-option {
+            width: 80px;
+            height: 80px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            background: rgba(212, 175, 55, 0.1);
+        }
+
+        .promotion-option:hover {
+            border-color: #d4af37;
+            background: rgba(212, 175, 55, 0.2);
+            transform: scale(1.1);
+        }
+
+        /* End Game Modal */
+        #endgame-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 950;
+        }
+
+        #endgame-modal.active {
+            display: flex;
+        }
+
+        .endgame-content {
+            background: linear-gradient(145deg, #1a1a2e, #0a0a0a);
+            border: 3px solid #d4af37;
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            max-width: 90%;
+        }
+
+        .endgame-title {
+            font-size: 3rem;
+            color: #d4af37;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 30px #d4af37;
+        }
+
+        .endgame-subtitle {
+            font-size: 1.2rem;
+            color: #888;
+            margin-bottom: 2rem;
+        }
+
+        .endgame-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        /* Settings Modal */
+        #settings-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 950;
+        }
+
+        #settings-modal.active {
+            display: flex;
+        }
+
+        .settings-content {
+            background: linear-gradient(145deg, #1a1a2e, #0a0a0a);
+            border: 2px solid #d4af37;
+            border-radius: 15px;
+            padding: 2rem;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .settings-title {
+            font-size: 2rem;
+            color: #d4af37;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .settings-section {
+            margin-bottom: 2rem;
+        }
+
+        .settings-section-title {
+            font-size: 1.2rem;
+            color: #d4af37;
+            margin-bottom: 1rem;
+        }
+
+        .settings-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: rgba(26, 26, 46, 0.5);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+
+        .settings-option-label {
+            font-size: 1rem;
+            color: #ccc;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 25px;
+            background: #333;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .toggle-switch.active {
+            background: #d4af37;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 21px;
+            height: 21px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(25px);
+        }
+
+        .quality-selector {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .quality-btn {
+            flex: 1;
+            padding: 0.5rem;
+            background: rgba(26, 26, 46, 0.5);
+            border: 1px solid #555;
+            color: #888;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .quality-btn:hover {
+            border-color: #d4af37;
+        }
+
+        .quality-btn.selected {
+            background: #d4af37;
+            border-color: #f4d03f;
+            color: #0a0a0a;
+        }
+
+        .settings-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 2rem;
+            color: #888;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .settings-close:hover {
+            color: #d4af37;
+        }
+
+        /* Tutorial Modal */
+        #tutorial-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 950;
+            overflow-y: auto;
+        }
+
+        #tutorial-modal.active {
+            display: flex;
+        }
+
+        .tutorial-content {
+            background: linear-gradient(145deg, #1a1a2e, #0a0a0a);
+            border: 2px solid #d4af37;
+            border-radius: 15px;
+            padding: 2rem;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .tutorial-title {
+            font-size: 2rem;
+            color: #d4af37;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .tutorial-section {
+            margin-bottom: 2rem;
+        }
+
+        .tutorial-section-title {
+            font-size: 1.3rem;
+            color: #d4af37;
+            margin-bottom: 1rem;
+        }
+
+        .tutorial-text {
+            color: #ccc;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .tutorial-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 2rem;
+            color: #888;
+            cursor: pointer;
+        }
+
+        .tutorial-close:hover {
+            color: #d4af37;
+        }
+
+        /* Confirmation Modal */
+        #confirm-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 960;
+        }
+
+        #confirm-modal.active {
+            display: flex;
+        }
+
+        .confirm-content {
+            background: linear-gradient(145deg, #1a1a2e, #0a0a0a);
+            border: 2px solid #d4af37;
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            max-width: 80%;
+        }
+
+        .confirm-title {
+            font-size: 1.5rem;
+            color: #d4af37;
+            margin-bottom: 1rem;
+        }
+
+        .confirm-text {
+            color: #ccc;
+            margin-bottom: 2rem;
+        }
+
+        .confirm-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .confirm-button {
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .confirm-button.yes {
+            background: #d4af37;
+            color: #0a0a0a;
+        }
+
+        .confirm-button.no {
+            background: rgba(26, 26, 46, 0.8);
+            border: 1px solid #555;
+            color: #ccc;
+        }
+
+        .confirm-button:hover {
+            transform: scale(1.05);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .menu-logo {
+                font-size: 2.5rem;
+            }
+
+            .menu-subtitle {
+                font-size: 0.9rem;
+            }
+
+            .menu-button {
+                padding: 0.875rem 1.5rem;
+                font-size: 1rem;
+            }
+
+            .hud-top {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .turn-indicator {
+                font-size: 1rem;
+            }
+
+            .hud-controls {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .hud-button {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.8rem;
+            }
+
+            .move-history {
+                font-size: 0.8rem;
+            }
+
+            .endgame-title {
+                font-size: 2rem;
+            }
+
+            .promotion-options {
+                gap: 0.5rem;
+            }
+
+            .promotion-option {
+                width: 60px;
+                height: 60px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .menu-logo {
+                font-size: 2rem;
+            }
+
+            .menu-button {
+                padding: 0.75rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            .difficulty-selector {
+                flex-direction: column;
+            }
+
+            .difficulty-btn {
+                width: 100%;
+            }
+
+            .hud-button {
+                padding: 0.3rem 0.6rem;
+                font-size: 0.7rem;
+            }
+
+            .captured-pieces {
+                max-width: 150px;
+            }
+
+            .captured-piece {
+                width: 25px;
+                height: 25px;
+            }
+        }
+
+        /* Font Import */
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loading-logo">WIZARD CHESS 3D</div>
+        <div class="loading-subtitle">THE ROYAL MAGIC CHESS EXPERIENCE</div>
+        <div class="loading-bar">
+            <div class="loading-bar-fill" id="loading-bar-fill"></div>
+        </div>
+        <div class="loading-percent" id="loading-percent">0%</div>
+    </div>
+
+    <!-- Main Menu -->
+    <div id="main-menu">
+        <div class="menu-logo">WIZARD CHESS 3D</div>
+        <div class="menu-subtitle">THE ROYAL MAGIC CHESS EXPERIENCE</div>
+        <div class="menu-content">
+            <button class="menu-button" onclick="startGame('ai')">PLAYER VS AI</button>
+            <div class="difficulty-selector">
+                <button class="difficulty-btn" data-difficulty="easy" onclick="setDifficulty('easy')">EASY</button>
+                <button class="difficulty-btn selected" data-difficulty="medium" onclick="setDifficulty('medium')">MEDIUM</button>
+                <button class="difficulty-btn" data-difficulty="hard" onclick="setDifficulty('hard')">HARD</button>
+            </div>
+            <button class="menu-button" onclick="startGame('local')">LOCAL TWO PLAYER</button>
+            <button class="menu-button secondary" onclick="showFreeCamera()">FREE CAMERA MODE</button>
+            <button class="menu-button secondary" onclick="showSettings()">SETTINGS</button>
+            <button class="menu-button secondary" onclick="showTutorial()">HOW TO PLAY</button>
+            <button class="menu-button secondary" id="resume-button" onclick="resumeGame()" style="display: none;">RESUME GAME</button>
+        </div>
+    </div>
+
+    <!-- Game Container -->
+    <div id="container"></div>
+
+    <!-- In-Game HUD -->
+    <div id="game-hud">
+        <div class="hud-top">
+            <div class="turn-indicator" id="turn-indicator">WHITE'S TURN</div>
+            <div class="hud-controls">
+                <button class="hud-button" onclick="undoMove()">UNDO</button>
+                <button class="hud-button" onclick="restartGame()">RESTART</button>
+                <button class="hud-button" onclick="showMenu()">MENU</button>
+                <button class="hud-button" onclick="toggleCamera()">CAMERA</button>
+                <button class="hud-button" onclick="toggleSound()">SOUND</button>
+            </div>
+        </div>
+        <div class="camera-indicator" id="camera-indicator">ROYAL VIEW</div>
+        <div class="move-history" id="move-history"></div>
+        <div class="captured-pieces" id="captured-pieces"></div>
+    </div>
+
+    <!-- Promotion Modal -->
+    <div id="promotion-modal">
+        <div class="promotion-content">
+            <div class="promotion-title">PROMOTE PAWN</div>
+            <div class="promotion-options" id="promotion-options"></div>
+        </div>
+    </div>
+
+    <!-- End Game Modal -->
+    <div id="endgame-modal">
+        <div class="endgame-content">
+            <div class="endgame-title" id="endgame-title">CHECKMATE</div>
+            <div class="endgame-subtitle" id="endgame-subtitle">White wins!</div>
+            <div class="endgame-buttons">
+                <button class="menu-button" onclick="playAgain()">PLAY AGAIN</button>
+                <button class="menu-button secondary" onclick="reviewBoard()">REVIEW BOARD</button>
+                <button class="menu-button secondary" onclick="returnToMenu()">MAIN MENU</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal">
+        <div class="settings-content">
+            <span class="settings-close" onclick="closeSettings()">&times;</span>
+            <div class="settings-title">SETTINGS</div>
+            <div class="settings-section">
+                <div class="settings-section-title">GRAPHICS QUALITY</div>
+                <div class="settings-option">
+                    <span class="settings-option-label">Quality Level</span>
+                    <div class="quality-selector">
+                        <button class="quality-btn" data-quality="low" onclick="setQuality('low')">LOW</button>
+                        <button class="quality-btn selected" data-quality="medium" onclick="setQuality('medium')">MEDIUM</button>
+                        <button class="quality-btn" data-quality="high" onclick="setQuality('high')">HIGH</button>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-section">
+                <div class="settings-section-title">SOUND</div>
+                <div class="settings-option">
+                    <span class="settings-option-label">Sound Effects</span>
+                    <div class="toggle-switch" id="sound-toggle" onclick="toggleSoundSettings()"></div>
+                </div>
+                <div class="settings-option">
+                    <span class="settings-option-label">Background Music</span>
+                    <div class="toggle-switch" id="music-toggle" onclick="toggleMusicSettings()"></div>
+                </div>
+            </div>
+            <div class="settings-section">
+                <div class="settings-section-title">GAMEPLAY</div>
+                <div class="settings-option">
+                    <span class="settings-option-label">Camera Preset</span>
+                    <div class="quality-selector">
+                        <button class="quality-btn" data-camera="royal" onclick="setDefaultCamera('royal')">ROYAL</button>
+                        <button class="quality-btn" data-camera="tactical" onclick="setDefaultCamera('tactical')">TACTICAL</button>
+                        <button class="quality-btn" data-camera="topdown" onclick="setDefaultCamera('topdown')">TOP-DOWN</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tutorial Modal -->
+    <div id="tutorial-modal">
+        <div class="tutorial-content">
+            <span class="tutorial-close" onclick="closeTutorial()">&times;</span>
+            <div class="tutorial-title">HOW TO PLAY</div>
+            <div class="tutorial-section">
+                <div class="tutorial-section-title">BASICS</div>
+                <div class="tutorial-text">
+                    WIZARD CHESS 3D is a complete chess game with standard rules. Select a piece to see its legal moves, then tap a destination square to move it.
+                </div>
+            </div>
+            <div class="tutorial-section">
+                <div class="tutorial-section-title">PIECE MOVEMENT</div>
+                <div class="tutorial-text">
+                    <strong>Pawn:</strong> Moves forward 1 square (2 on first move), captures diagonally.<br>
+                    <strong>Rook:</strong> Moves any number of squares horizontally or vertically.<br>
+                    <strong>Knight:</strong> Moves in an L-shape (2 squares one direction, then 1 perpendicular).<br>
+                    <strong>Bishop:</strong> Moves any number of squares diagonally.<br>
+                    <strong>Queen:</strong> Moves any number of squares in any direction.<br>
+                    <strong>King:</strong> Moves one square in any direction.
+                </div>
+            </div>
+            <div class="tutorial-section">
+                <div class="tutorial-section-title">SPECIAL MOVES</div>
+                <div class="tutorial-text">
+                    <strong>Castling:</strong> King moves 2 squares toward a rook, and the rook jumps to the square the king passed over. Only allowed if neither piece has moved and no pieces are between them.<br>
+                    <strong>En Passant:</strong> If a pawn moves 2 squares forward from its starting position and lands beside an opponent's pawn, the opponent can capture it as if it had moved only 1 square forward. This must be done on the very next move.<br>
+                    <strong>Pawn Promotion:</strong> When a pawn reaches the opposite end of the board, it can be promoted to a queen, rook, bishop, or knight.
+                </div>
+            </div>
+            <div class="tutorial-section">
+                <div class="tutorial-section-title">GAME END</div>
+                <div class="tutorial-text">
+                    <strong>Check:</strong> When the king is under direct attack. You must get out of check on your next move.<br>
+                    <strong>Checkmate:</strong> When the king is in check and cannot escape. The game is over.<br>
+                    <strong>Stalemate:</strong> When a player has no legal moves but is not in check. The game is a draw.<br>
+                    <strong>Draw:</strong> Can also occur by repetition, insufficient material, or agreement.
+                </div>
+            </div>
+            <div class="tutorial-section">
+                <div class="tutorial-section-title">CONTROLS</div>
+                <div class="tutorial-text">
+                    <strong>Touch/Mouse:</strong> Tap to select, tap again to move.<br>
+                    <strong>Camera:</strong> Drag to rotate, pinch to zoom, two-finger drag to pan.<br>
+                    <strong>Buttons:</strong> Use the HUD buttons for undo, restart, menu, and camera presets.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal">
+        <div class="confirm-content">
+            <div class="confirm-title" id="confirm-title">CONFIRM</div>
+            <div class="confirm-text" id="confirm-text">Are you sure?</div>
+            <div class="confirm-buttons">
+                <button class="confirm-button yes" id="confirm-yes" onclick="confirmYes()">YES</button>
+                <button class="confirm-button no" id="confirm-no" onclick="confirmNo()">NO</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.0/chess.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
